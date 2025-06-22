@@ -6,6 +6,8 @@ const nodemailer = require("nodemailer");
 const app = express();
 const PORT = process.env.PORT || 3001;
 
+app.use(cors());
+app.use(express.json());
 
 const codes = {};
 
@@ -72,7 +74,12 @@ app.listen(PORT, () => {
   console.log(`Server running at http://localhost:${PORT}`);
 });
 
-app.use(express.json());
 
 app.use(express.static(path.join(__dirname, "client/build")));
 
+app.post("/send-code", (req, res) => {
+  console.log("POST /send-code çağırıldı");
+  console.log("req.body nədir:", req.body); // <-- Əlavə et
+
+  const { emailOrPhone } = req.body;
+});
