@@ -4,7 +4,7 @@ const path = require("path");
 const nodemailer = require("nodemailer");
 
 const app = express();
-const PORT = 3001;
+const PORT = process.env.PORT || 3001;
 
 
 const codes = {};
@@ -12,9 +12,9 @@ const codes = {};
 const transporter = nodemailer.createTransport({
   service: "gmail",
   auth: {
-    user: "projecttravel1990@gmail.com",
-    pass: "cchs cakp qbmy wgxv"
-  }
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS,
+  },
 });
 
 app.post("/send-code", (req, res) => {
@@ -75,3 +75,4 @@ app.listen(PORT, () => {
 app.use(express.json());
 
 app.use(express.static(path.join(__dirname, "client/build")));
+
