@@ -2,6 +2,8 @@ const express = require("express");
 const cors = require("cors");
 const path = require("path");
 const nodemailer = require("nodemailer");
+const admin = require("firebase-admin");
+require("dotenv").config(); // .env faylını yüklə
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -9,18 +11,29 @@ const PORT = process.env.PORT || 3001;
 app.use(cors());
 app.use(express.json());
 
-const codes = {};
+// 🔐 Firebase Admin SDK - Environment Variable ilə
+admin.initializeApp({
+  credential: admin.credential.cert({
+    projectId: process.env.FIREBASE_PROJECT_ID,
+    clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+    privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'),
+  }),
+});
 
+// 🔐 Email göndərmək üçün nodemailer transporter
 const transporter = nodemailer.createTransport({
   service: "gmail",
   auth: {
-    user: "projecttravel1990@gmail.com",
-    pass: "cchs cakp qbmy wgxv"
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS,
   },
 });
 
+// 🔐 Kodlar müvəqqəti burada saxlanır
+const codes = {};
+
+// 📩 Kod göndərmə endpoint
 app.post("/send-code", (req, res) => {
-    console.log("POST /send-code çağırıldı");
   const { emailOrPhone } = req.body;
   if (!emailOrPhone) {
     return res.status(400).json({ message: "Email or phone required" });
@@ -29,14 +42,12 @@ app.post("/send-code", (req, res) => {
   const code = Math.floor(1000 + Math.random() * 9000);
   codes[emailOrPhone] = code;
 
-  console.log(`Verification code for ${emailOrPhone}: ${code}`);
-
   if (emailOrPhone.includes("@")) {
     const mailOptions = {
-      from: "sənin.email@gmail.com",
+      from: process.env.EMAIL_USER,
       to: emailOrPhone,
       subject: "Verification Code",
-      text: `Your verification code is: ${code}`
+      text: `Your verification code is: ${code}`,
     };
 
     transporter.sendMail(mailOptions, (error, info) => {
@@ -53,6 +64,7 @@ app.post("/send-code", (req, res) => {
   }
 });
 
+// ✅ Kod yoxlama endpoint
 app.post("/verify-code", (req, res) => {
   const { emailOrPhone, code } = req.body;
 
@@ -64,50 +76,42 @@ app.post("/verify-code", (req, res) => {
   }
 });
 
+// 🔐 Şifrə sıfırlama endpoint
 app.post("/reset-password", async (req, res) => {
   const { emailOrPhone, password } = req.body;
 
   if (!emailOrPhone || !password) {
-    return res.status(400).json({ message: "Email and password are required" });
+    return res
+      .status(400)
+      .json({ message: "Email and password are required" });
   }
 
   try {
-    // Firebase-də istifadəçini email ilə tap və şifrəsini yenilə
     const user = await admin.auth().getUserByEmail(emailOrPhone);
-
-    await admin.auth().updateUser(user.uid, {
-      password: password,
+    await admin.auth().updateUser(user.uid, { password });
+    return res.json({
+      success: true,
+      message: "Password updated successfully in Firebase.",
     });
-
-    return res.json({ success: true, message: "Password updated successfully in Firebase." });
   } catch (error) {
     console.error("Firebase password update error:", error.message);
-    return res.status(500).json({ success: false, message: "Failed to update password." });
+    return res.status(500).json({
+      success: false,
+      message: "Failed to update password.",
+    });
   }
 });
 
-const admin = require("firebase-admin");
-const serviceAccount = require("./firebase-admin-key.json");
-
-admin.initializeApp({
-  credential: admin.credential.cert(serviceAccount),
-});
-
-app.get('/user/:id', (req, res) => {
+// 🔧 (Əlavə route nümunəsi)
+app.get("/user/:id", (req, res) => {
   const userId = req.params.id;
   res.send(`User ID: ${userId}`);
 });
 
-app.listen(PORT, () => {
-  console.log(`Server running at http://localhost:${PORT}`);
-});
-
-
+// 🔗 Frontend statik fayllar üçün
 app.use(express.static(path.join(__dirname, "client/build")));
 
-app.post("/send-code", (req, res) => {
-  console.log("POST /send-code çağırıldı");
-  console.log("req.body nədir:", req.body); // <-- Əlavə et
-
-  const { emailOrPhone } = req.body;
+// 🔊 Serveri başlat
+app.listen(PORT, () => {
+  console.log(`✅ Server running at http://localhost:${PORT}`);
 });
