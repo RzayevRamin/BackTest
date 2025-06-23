@@ -64,6 +64,16 @@ app.post("/verify-code", (req, res) => {
   }
 });
 
+app.post("/reset-password", (req, res) => {
+  const { emailOrPhone, password } = req.body;
+  
+  if (!emailOrPhone || !password) {
+    return res.status(400).json({ message: "Email and password are required" });
+  }
+
+  console.log(`New password set for ${emailOrPhone}: ${password}`);
+  return res.json({ success: true, message: "Password reset successfully" });
+});
 
 app.get('/user/:id', (req, res) => {
   const userId = req.params.id;
