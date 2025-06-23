@@ -64,15 +64,33 @@ app.post("/verify-code", (req, res) => {
   }
 });
 
-app.post("/reset-password", (req, res) => {
+app.post("/reset-password", async (req, res) => {
   const { emailOrPhone, password } = req.body;
-  
+
   if (!emailOrPhone || !password) {
     return res.status(400).json({ message: "Email and password are required" });
   }
 
-  console.log(`New password set for ${emailOrPhone}: ${password}`);
-  return res.json({ success: true, message: "Password reset successfully" });
+  try {
+    // Firebase-də istifadəçini email ilə tap və şifrəsini yenilə
+    const user = await admin.auth().getUserByEmail(emailOrPhone);
+
+    await admin.auth().updateUser(user.uid, {
+      password: password,
+    });
+
+    return res.json({ success: true, message: "Password updated successfully in Firebase." });
+  } catch (error) {
+    console.error("Firebase password update error:", error.message);
+    return res.status(500).json({ success: false, message: "Failed to update password." });
+  }
+});
+
+const admin = require("firebase-admin");
+const serviceAccount = require("./firebase-admin-key.json");
+
+admin.initializeApp({
+  credential: admin.credential.cert(serviceAccount),
 });
 
 app.get('/user/:id', (req, res) => {
